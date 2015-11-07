@@ -92,7 +92,7 @@ int file_open(const char* name,char** pbuf) {
 	fstat(fd,&_stat);
 	size = _stat.st_size;
 	*pbuf = (char*)malloc(size);
-	read(fd,*buf,size);
+	read(fd,*pbuf,size);
 	
 	return size;
 }
@@ -104,8 +104,8 @@ int main(int args,char** argv) {
 	struct v4l2_jpegcompression arg;
 	struct v4l2_format fmt;
 	struct v4l2_requestbuffers req;
-	struct v4l2_buffer nuf;
-	struct v4l2_plan planes[MAX_JPEG_PLAN_CNT];
+	struct v4l2_buffer buf;
+	struct v4l2_plane planes[MAX_JPEG_PLAN_CNT];
 	int n;
 	int out_buf_offset[MAX_JPEG_PLAN_CNT];
 	char* out_buf_address[MAX_JPEG_PLAN_CNT];
@@ -144,7 +144,7 @@ int main(int args,char** argv) {
 	}
 	
 	memset(&fmt,0 ,sizeof(struct v4l2_format));
-	fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+	fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_JPEG;
 	fmt.fmt.pix_mp.width = 1024;
 	fmt.fmt.pix_mp.height = 520;
@@ -160,7 +160,7 @@ int main(int args,char** argv) {
 	
 	memset(&req,0,sizeof(struct v4l2_requestbuffers));
 	
-	req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+	req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	req.memory = V4L2_MEMORY_MMAP;
 	req.count = 1;
 
@@ -170,9 +170,9 @@ int main(int args,char** argv) {
 		return ret;
 	}
 	
-	for(n = 0; n < req.count,n++) {
+	for(n = 0; n < req.count;n++) {
 		memset(&buf,0,sizeof(struct v4l2_buffer));
-		buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+		buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index = n;
 		buf.m.planes = planes;
@@ -194,7 +194,7 @@ int main(int args,char** argv) {
 		}
 	}
 	memset(&fmt,0,sizeof(struct v4l2_format));
-	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB24;
 	fmt.fmt.pix_mp.width = 1024;
 	fmt.fmt.pix_mp.height = 520;
@@ -209,7 +209,7 @@ int main(int args,char** argv) {
 
 	memset(&req,0,sizeof(struct v4l2_requestbuffers));
 
-	req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+	req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	req.memory = V4L2_MEMORY_MMAP;
 	req.count = 1;
 
@@ -220,9 +220,9 @@ int main(int args,char** argv) {
 		return 1;
 	}
 	
-	for(n = 0; n < req.count,n++) {
+	for(n = 0; n < req.count;n++) {
 		memset(&buf,0,sizeof(struct v4l2_buffer));
-		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index = n;
 		buf.m.planes = planes;
@@ -233,7 +233,7 @@ int main(int args,char** argv) {
 			printf("OUTPUT query buffer error\n");
 			return 1;
 		}
-		capture_buf_offset[n]] = buf.m.planes[0].m.mem_offset;
+		capture_buf_offset[n] = buf.m.planes[0].m.mem_offset;
 		capture_buf_address[n] = mmap(NULL,buf.m.planes[0].length,
 			PORT_READ|PORT_WRITE,MAP_SHARED,
 			_fd,buf.m.planes[0].m.mem_offset);
@@ -253,12 +253,12 @@ int main(int args,char** argv) {
 	memcpy(out_buf_address,jpeg_buf,jpeg_size);
 	
 	memset(&buf,0,sizeof(struct v4l2_buffer));
-	buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+	buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
 	buf.index = 0;
 	buf.m.planes = planes;
 	buf.length = 1;
-	buf.m.planed[0].bytesused = jpeg_size;
+	buf.m.planes[0].bytesused = jpeg_size;
 	
 	ret = ioctl(_fd,VIDIOC_QBUF,&buf);
 	if(ret) {
@@ -267,7 +267,7 @@ int main(int args,char** argv) {
 	}
 	
 	memset(&buf,0,sizeof(struct v4l2_buffer));
-	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
 	buf.index = 0;
 	buf.m.planes = planes;
@@ -279,14 +279,14 @@ int main(int args,char** argv) {
 		return 1;
 	}
 	
-	_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+	_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	ret = ioctl(_fd,VIDIOC_STREAMON,&_type);
 	if(ret) {
 		printf("failed to open stream OUTPUT\n");
 		return 1;
 	}
 	
-	_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+	_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	ret = ioctl(_fd,VIDIOC_STREAMON,&_type);
 	if(ret) {
 		printf("failed to open steram CAPTURE\n");
@@ -294,7 +294,7 @@ int main(int args,char** argv) {
 	}
 	
 	memset(&buf,0,sizeof(struct v4l2_buffer));
-	buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLAN;
+	buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
 	buf.m.planes = planes;
 	buf.length = 1;
@@ -306,7 +306,7 @@ int main(int args,char** argv) {
 	}
 	
 	memset(&buf,0,sizeof(struct v4l2_buffer));
-	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLAN;
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
 	buf.m.planes = planes;
 	buf.length = 1;
@@ -317,7 +317,7 @@ int main(int args,char** argv) {
 		return 1;
 	}
 	
-	rgb_size = buf.m.plane[0].bytesused;
+	rgb_size = buf.m.planes[0].bytesused;
 	write_bmp("a.bmp",1024,520,3,capture_buf_address[0]);
 	close(_fd);
 
