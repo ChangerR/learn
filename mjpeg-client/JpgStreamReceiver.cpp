@@ -1,5 +1,6 @@
 #include "JpgStreamReceiver.h"
 #include "stringc.h"
+#include "HttpUrlConnection.h"
 
 DWORD WINAPI JpgStreamReceiver::data_handler(LPVOID data) {
 
@@ -12,7 +13,7 @@ DWORD WINAPI JpgStreamReceiver::data_handler(LPVOID data) {
 	pointer->_conn->close();
 	
 	if(pointer->_error_minitor&&pointer->_triger)
-		CreateThread(NULL,0,pointer->_triger,pointer->_handler_data,0,NULL);
+		CreateThread(NULL,0,LPTHREAD_START_ROUTINE(pointer->_triger),pointer->_handler_data,0,NULL);
 
 	LOGOUT("data handler return\n");
 	return 1;
@@ -29,11 +30,11 @@ DWORD WINAPI JpgStreamReceiver::http_handler(LPVOID data) {
 	return 1;
 }
 
-JpgStreamReceiver::JpgStreamReceiver(int _imgbufCount,int max_):max_size(max_)
+JpgStreamReceiver::JpgStreamReceiver(int _imgbufCount,int max_):_maxSize(max_)
 {
-	_conn = new HttpUrlConnection(1024*16,16);
+	_conn = new HttpUrlConnection(1024*64,16);
 	_buf = new u8[max_];
-	_recvHandle = INVALID_HANDLE_VALUE;
+	_dataHandle = INVALID_HANDLE_VALUE;
 	_httpHandle = INVALID_HANDLE_VALUE;
 	_running = false;
 	_maxImagesCount = _imgbufCount;
@@ -45,7 +46,8 @@ JpgStreamReceiver::JpgStreamReceiver(int _imgbufCount,int max_):max_size(max_)
 
 JpgStreamReceiver::~JpgStreamReceiver( void )
 {
-	closeReceiver();
+	close();
+
 	delete[] _buf;
 	if (_conn) {
 		delete _conn;
@@ -70,7 +72,7 @@ bool JpgStreamReceiver::readImage(int* len)
 	stringc jsHeader;
 	u8* buf = _buf;
 
-	CCHttpStream* outs = _conn->getHttpOutputStream();		
+	HttpStream* outs = _conn->getHttpOutputStream();		
 
 	do 
 	{
@@ -118,7 +120,7 @@ bool JpgStreamReceiver::readImage(int* len)
 	}
 
 	recv_len = toDigit(digital);
-
+	//LOGOUT("image length=%d\n", recv_len);
 	int write_len = 0;
 	if (recv_len > *len)
 	{
@@ -143,7 +145,7 @@ bool JpgStreamReceiver::readImage(int* len)
 	return true;
 }
 
-bool open(const char* url,error_return_handler handler,LPVOID data) {
+bool JpgStreamReceiver::open(const char* url,error_return_handler handler,LPVOID data) {
 	
 	if(_dataHandle != INVALID_HANDLE_VALUE || _httpHandle != INVALID_HANDLE_VALUE) {
 		LOGOUT("you cannot start Stream receiver twice!!\n");
@@ -163,7 +165,7 @@ bool open(const char* url,error_return_handler handler,LPVOID data) {
 	return true;
 }
 	
-void close() {
+void JpgStreamReceiver::close() {
 	
 	_error_minitor = false;
 	_running = false;
@@ -182,10 +184,10 @@ void close() {
 		_dataHandle = INVALID_HANDLE_VALUE;
 	}
 	
-	if(!images.empty()) {
+	if(!_images.empty()) {
 		lock();
 		
-		for(list<Image*>::node* p = images.begin(); p != images.end();p = p->next) {
+		for(list<Image*>::node* p = _images.begin(); p != _images.end();p = p->next) {
 			delete p->element;
 		}
 		unlock();
@@ -195,27 +197,28 @@ void close() {
 
 void JpgStreamReceiver::push()
 {
-	int len = max_size;
+	int len = _maxSize;
 	Image* img = new Image;
 	
 	if (!readImage(&len)) {
-		LOGOUT("get image data false");
+		LOGOUT("get image data false\n");
 		_running = false;
 		return;
 	}
 
-	img->fillImage(_buf,len)
+	img->fillImage(_buf, len,IMAGE_JPEG);
 	
 	lock();
 
 	if (img)
-		images.push_back(img);
+		_images.push_back(img);
 
-	if (images.size() > _maxImagesCount)
+	if (_images.getSize() > _maxImagesCount)
 	{
-		LOGOUT("images count bigger than maxImagesCount in buffer");
-		img = images.begin()->element;
-		images.erase(images.begin());
+		//LOGOUT("images count bigger than maxImagesCount in buffer\n");
+		img = _images.begin()->element;
+		_images.erase(_images.begin());
+
 		if(img)
 			delete img;
 	}
@@ -229,11 +232,11 @@ Image* JpgStreamReceiver::pop()
 
 	lock();
 
-	if (images.empty())
+	if (_images.empty())
 		img = NULL;
 	else {
-		img = images.begin()->element;
-		images.erase(images.begin());
+		img = _images.begin()->element;
+		_images.erase(_images.begin());
 	}
 		
 	unlock();
@@ -244,7 +247,7 @@ bool JpgStreamReceiver::restart()
 {
 	close();
 	
-	return start(_url.c_str(),_triger,_handler_data);
+	return open(_url.c_str(),_triger,_handler_data);
 }
 
 

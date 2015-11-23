@@ -21,13 +21,14 @@ long HttpUrlConnection::response_writer(void *data, int size, int nmemb, HttpUrl
 	return sizes;
 }
 
-HttpUrlConnection::HttpUrlConnection(u32 page_size,u32 page_count){	
-	outs = new HttpStream(_page_size, _page_count);
+HttpUrlConnection::HttpUrlConnection(s32 page_size,s32 page_count){	
+	
 	_wpos = 0;
 	_page_size = page_size;
 	_page_count = page_count;
 	handler = curl_easy_init();
 	_running = false;
+	outs = new HttpStream(_page_size, _page_count);
 }
 
 HttpUrlConnection::~HttpUrlConnection() {
@@ -65,7 +66,7 @@ bool HttpUrlConnection::open(const char* url) {
 	curl_easy_setopt(handler, CURLOPT_WRITEFUNCTION, HttpUrlConnection::data_writer_sync);
 	curl_easy_setopt(handler, CURLOPT_WRITEDATA, outs);
 
-	curl_easy_setopt(handler, CURLOPT_TIMEOUT_MS, 500L);
+	//curl_easy_setopt(handler, CURLOPT_TIMEOUT_MS, 5000L);
 
 	curl_easy_setopt(handler, CURLOPT_HEADERFUNCTION, HttpUrlConnection::response_writer);
 	curl_easy_setopt(handler, CURLOPT_WRITEHEADER, this);

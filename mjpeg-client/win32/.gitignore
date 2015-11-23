@@ -1,0 +1,6 @@
+Debug
+*.sdf
+*.exe
+*.lib
+*.obj
+*.dll

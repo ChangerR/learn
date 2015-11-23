@@ -1,5 +1,24 @@
 #ifndef _SL_LIST__H
 #define _SL_LIST__H
+
+/***************************************************************************
+*
+*  Project libmjpeg
+*
+* Copyright (C) 2014-2015, Changer, <dingjinchengyx@163.com>.
+*
+* This software is licensed as described in the file COPYING, which
+* you should have received as part of this distribution.
+*
+* You may opt to use, copy, modify, merge, publish, distribute and/or sell
+* copies of the Software, and permit persons to whom the Software is
+* furnished to do so, under the terms of the COPYING file.
+*
+* This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+* KIND, either express or implied.
+*
+***************************************************************************/
+
 #include "slconfig.h"
 
 template <class T>
@@ -40,11 +59,12 @@ public:
 		node* p = head->next;
 		while (p != tail)
 		{	
-			head->next = head->next->next;
+			head->next = p->next;
 			delete p;
 			p = head->next;
 			--m_size;
 		}
+		tail->prev = head;
 	}
 
 	bool empty() {
@@ -100,10 +120,8 @@ public:
 		node* p = head->next;
 		for (int index = 0; index < i;index++)
 			p = p->next;
-		p->prev->next = p->next;
-		p->next->prev = p->prev;
-		delete p;
-		m_size--;
+		
+		erase(p);
 	}
 
 	void erase(node* p) {

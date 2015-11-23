@@ -1,7 +1,6 @@
 #include "HttpStream.h"
 #include <stdlib.h>
 #include <string.h>
-
 #ifdef SLSERVER_WIN32
 #include <windows.h>
 #endif
@@ -12,7 +11,6 @@
 HttpStream::HttpStream(int size_count,int cnt) :_page_size(size_count),_isEOF(false){
 
 	InitializeCriticalSection(&_write_mutex);
-	
 	_free_page = new list<u8*>();
 	_p_arr = new list<u8*>();
 	u8* temp = NULL;
@@ -55,16 +53,12 @@ void HttpStream::unlock() {
 }
 	
 int HttpStream::read(u8* buf,int len) {
-	
 	int read_len = 0;
 	int span = 0;
 	lock();
-	
 	while(len) {
-		
 		span = (_readpage_addr == _writepage_addr ? _write_pos : _page_size) - _read_pos;
 		span = span > len ? len:span;
-		
 		if (span <= 0)
 		{
 			if(_readpage_addr == _writepage_addr)
@@ -76,26 +70,21 @@ int HttpStream::read(u8* buf,int len) {
 			_readpage_addr = _p_arr->begin()->element;
 			continue;
 		}
-		
 		memcpy(buf,_readpage_addr + _read_pos,span);
 		_read_pos += span;
 		read_len += span;
 		buf += span;
 		len -= span;
 	}
-	
 	unlock();
-	
 	return read_len;
 }
 
 int HttpStream::readline(u8* buf,int len) {
-	
 	char* p = NULL;
 	char* end ;
 	int read_size = 1;	
 	lock();
-	
 	for(list<u8*>::node* p_node = _p_arr->begin();p_node != _p_arr->end();p_node = p_node->next) {
 		p = (char*)p_node->element + (p_node->element == _readpage_addr ?_read_pos:0);
 		end = (char*)p_node->element + (p_node->element == _writepage_addr ?_write_pos:_page_size);
@@ -108,9 +97,7 @@ int HttpStream::readline(u8* buf,int len) {
 		if(p < end)
 			break;
 	}
-	
 	unlock();
-	
 	if (p&&*p != '\n') {
 		return -1;
 	}
@@ -178,12 +165,14 @@ bool HttpStream::isEOF()
 
 
 void HttpStream::clear() {
-	
+
 	lock();
 	
 	for(list<u8*>::node* p = _p_arr->begin();p != _p_arr->end();p = p->next) {
 		_free_page->push_front(p->element);
 	}
+
+	_p_arr->clear();
 
 	_writepage_addr = _free_page->begin()->element;
 

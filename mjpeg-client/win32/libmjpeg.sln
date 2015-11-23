@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libmjpeg", "libmjpeg.vcxproj", "{31F295B7-0B72-468B-BD6A-35E3ACA57620}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test1", "test1.vcxproj", "{740D682C-08CF-44BE-9520-B3B88174FA6F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test2", "test2.vcxproj", "{A97C21FC-0A28-4004-A4E1-CADAB70EDE81}"
+	ProjectSection(ProjectDependencies) = postProject
+		{31F295B7-0B72-468B-BD6A-35E3ACA57620} = {31F295B7-0B72-468B-BD6A-35E3ACA57620}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{31F295B7-0B72-468B-BD6A-35E3ACA57620}.Debug|Win32.ActiveCfg = Debug|Win32
+		{31F295B7-0B72-468B-BD6A-35E3ACA57620}.Debug|Win32.Build.0 = Debug|Win32
+		{31F295B7-0B72-468B-BD6A-35E3ACA57620}.Release|Win32.ActiveCfg = Release|Win32
+		{31F295B7-0B72-468B-BD6A-35E3ACA57620}.Release|Win32.Build.0 = Release|Win32
+		{740D682C-08CF-44BE-9520-B3B88174FA6F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{740D682C-08CF-44BE-9520-B3B88174FA6F}.Debug|Win32.Build.0 = Debug|Win32
+		{740D682C-08CF-44BE-9520-B3B88174FA6F}.Release|Win32.ActiveCfg = Release|Win32
+		{740D682C-08CF-44BE-9520-B3B88174FA6F}.Release|Win32.Build.0 = Release|Win32
+		{A97C21FC-0A28-4004-A4E1-CADAB70EDE81}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A97C21FC-0A28-4004-A4E1-CADAB70EDE81}.Debug|Win32.Build.0 = Debug|Win32
+		{A97C21FC-0A28-4004-A4E1-CADAB70EDE81}.Release|Win32.ActiveCfg = Release|Win32
+		{A97C21FC-0A28-4004-A4E1-CADAB70EDE81}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

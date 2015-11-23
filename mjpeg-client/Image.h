@@ -1,7 +1,26 @@
 #ifndef __IMAGE_SL
 #define __IMAGE_SL
+/***************************************************************************
+*
+*  Project libmjpeg
+*
+* Copyright (C) 2014-2015, Changer, <dingjinchengyx@163.com>.
+*
+* This software is licensed as described in the file COPYING, which
+* you should have received as part of this distribution.
+*
+* You may opt to use, copy, modify, merge, publish, distribute and/or sell
+* copies of the Software, and permit persons to whom the Software is
+* furnished to do so, under the terms of the COPYING file.
+*
+* This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+* KIND, either express or implied.
+*
+***************************************************************************/
+
 #include "slconfig.h"
 #include <stdio.h>
+#include "stringc.h"
 
 enum IMAGE_TYPE {
 	IMAGE_UNKNOW = 0,
@@ -18,11 +37,13 @@ public:
 		buf = NULL;
 		image_length = 0;
 		type = IMAGE_UNKNOW;
+		width = 0;
+		height = 0;
 	}
 	
 	virtual ~Image() {
 		if(buf)
-			delete buf;
+			delete[] buf;
 	}
 	
 	void fillImage(u8* data,int len,IMAGE_TYPE t) {
@@ -60,8 +81,8 @@ public:
 				if(name == NULL) {
 					location.append(".jpg");
 					
-					FILE* pic = fopen(tmp.c_str(),"wb");
-					fwrite(buf,len,1,pic);
+					FILE* pic = fopen(location.c_str(),"wb");
+					fwrite(buf,image_length,1,pic);
 					fflush(pic);
 					fclose(pic);
 					
@@ -72,9 +93,13 @@ public:
 				break;
 		}
 	}
+public:
 	u8* buf;
-	int image_length;
+	int image_length;	
 	IMAGE_TYPE type;
+	int width;
+	int height;
+	int depth;
 };
 
 #endif

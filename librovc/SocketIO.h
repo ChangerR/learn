@@ -7,6 +7,9 @@ struct libwebsocket;
 struct libwebsocket_context;
 struct libwebsocket_protocols;
 
+class WsThreadHelper;
+class WsMessage;
+
 class SIODelegate {
 public:
 
@@ -27,6 +30,7 @@ public:
 		SIO_V_0_X,SIO_V_1_X,
 	};
 	
+	
 	SocketIO(const char* host,unsigned short port,
 				SOCKETIO_VERSION v = SIO_V_0_X,int ssl);
 	
@@ -36,18 +40,21 @@ public:
 	
 	void close();
 	
-private:
-	
-	static DWORD WINAPI http_handler(LPVOID data);
-	
+protected:
+	int onSocketCallback(struct libwebsocket_context *ctx,
+                         struct libwebsocket *wsi,
+                         int reason,
+                         void *user, void *in, ssize_t len);
+						 
 	bool handShake(const std::string& s);
+	
+	friend class WebSocketCallbackWrapper;
 	
 private:
 	struct libwebsocket*         _wsInstance;
     struct libwebsocket_context* _wsContext;
 	int _SSLConnection;
     struct libwebsocket_protocols* _wsProtocols;
-	HANDLE _workThread;
 	SIODelegate* _delegate;
 	bool _running;
 	
