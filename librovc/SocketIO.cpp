@@ -1,6 +1,24 @@
 #include "SocketIO.h"
 #include "libwebsockets.h"
 
+#define WS_WRITE_BUFFER_SIZE 2048
+
+#define CC_SAFE_DELETE_ARRAY(_array) do { \
+			if(_array != NULL) \
+			{ \
+				delete[] _array; \
+				_array = NULL; \
+			} \
+		} while(0)
+			
+#define CC_SAFE_DELETE(_data) do { \
+			if(_data != NULL) \
+			{ \
+				delete _data; \
+				_data = NULL; \
+			} \
+		} while(0)
+
 class WsMessage
 {
 public:
@@ -119,7 +137,10 @@ DWORD WsThreadHelper::wsThreadEntryFunc(LPVOID data)
             break;
         }
     }
-    
+	
+	_wsHelper->_sio->onSubThreadEnded();
+	
+	return 0;    
 }
 
 void WsThreadHelper::sendMessageToUIThread(WsMessage *msg)
@@ -181,7 +202,19 @@ enum WS_MSG {
 
 
 SocketIO::SocketIO(const char* host,unsigned short port,
-				SOCKETIO_VERSION v = SIO_V_0_X,int ssl) {
+				SOCKETIO_VERSION v,int ssl) {
+					
+	_wsInstance = NULL;
+    _wsContext = NULL;
+	_SSLConnection = ssl;
+    _wsProtocols = NULL;
+	_delegate = NULL;
+	_wsHelper = NULL;
+	_version = v;
+	_readyState = CLOSED;
+	_host = host;
+	_path = "";
+	_port = port;
 	
 }
 	
@@ -191,6 +224,7 @@ SocketIO::~SocketIO() {
 
 bool SocketIO::open(SIODelegate* del) {
 	
+	_delegate = del;
 	_wsProtocols = new libwebsocket_protocols[2];
 	memset(_wsProtocols, 0, sizeof(libwebsocket_protocols)*2);
 	char* name = new char[20];
@@ -216,7 +250,7 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
                          int reason,
                          void *user, void *in, ssize_t len) {
  
-	//CCLOG("socket callback for %d reason", reason);
+	//printf("socket callback for %d reason", reason);
     assert(_wsContext == NULL || ctx == _wsContext, "Invalid context.");
     assert(_wsInstance == NULL || wsi == NULL || wsi == _wsInstance, "Invaild websocket instance.");
 
@@ -250,7 +284,7 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
             break;
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             {
-                WsMessage* msg = new (std::nothrow) WsMessage();
+                WsMessage* msg = new  WsMessage();
                 msg->what = WS_MSG_TO_UITHREAD_OPEN;
                 _readyState = State::OPEN;
                 
@@ -284,7 +318,7 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
 
                         size_t remaining = data->len - data->issued;
                         size_t n = std::min(remaining, c_bufferSize );
-                        CCLOG("[websocket:send] total: %d, sent: %d, remaining: %d, buffer size: %d", static_cast<int>(data->len), static_cast<int>(data->issued), static_cast<int>(remaining), static_cast<int>(n));
+                        printf("[websocket:send] total: %d, sent: %d, remaining: %d, buffer size: %d", static_cast<int>(data->len), static_cast<int>(data->issued), static_cast<int>(remaining), static_cast<int>(n));
 
                         unsigned char* buf = new unsigned char[LWS_SEND_BUFFER_PRE_PADDING + n + LWS_SEND_BUFFER_POST_PADDING];
 
@@ -314,7 +348,7 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
                         }
 
                         bytesWrite = libwebsocket_write(wsi,  &buf[LWS_SEND_BUFFER_PRE_PADDING], n, (libwebsocket_write_protocol)writeProtocol);
-                        CCLOG("[websocket:send] bytesWrite => %d", bytesWrite);
+                        printf("[websocket:send] bytesWrite => %d", bytesWrite);
 
                         // Buffer overrun?
                         if (bytesWrite < 0)
@@ -339,6 +373,7 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
                     }
                 }
                 
+				LeaveCriticalSection(&(_wsHelper->_subThreadWsMessageQueueMutex));
                 /* get notified as soon as we can write again */
                 
                 libwebsocket_callback_on_writable(ctx, wsi);
@@ -348,13 +383,13 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
         case LWS_CALLBACK_CLOSED:
             {
                 
-                CCLOG("%s", "connection closing..");
+                printf("%s", "connection closing..");
 
                 _wsHelper->quitSubThread();
                 
                 if (_readyState != State::CLOSED)
                 {
-                    WsMessage* msg = new (std::nothrow) WsMessage();
+                    WsMessage* msg = new  WsMessage();
                     _readyState = State::CLOSED;
                     msg->what = WS_MSG_TO_UITHREAD_CLOSE;
                     _wsHelper->sendMessageToUIThread(msg);
@@ -387,17 +422,17 @@ int SocketIO::onSocketCallback(struct libwebsocket_context *ctx,
 
                     if (_pendingFrameDataLen > 0)
                     {
-                        //CCLOG("%ld bytes of pending data to receive, consider increasing the libwebsocket rx_buffer_size value.", _pendingFrameDataLen);
+                        //printf("%ld bytes of pending data to receive, consider increasing the libwebsocket rx_buffer_size value.", _pendingFrameDataLen);
                     }
                     
                     // If no more data pending, send it to the client thread
                     if (_pendingFrameDataLen == 0)
                     {
-						WsMessage* msg = new (std::nothrow) WsMessage();
+						WsMessage* msg = new  WsMessage();
 						msg->what = WS_MSG_TO_UITHREAD_MESSAGE;
 
 						char* bytes = NULL;
-						Data* data = new (std::nothrow) Data();
+						Data* data = new  Data();
 
 						if (lws_frame_is_binary(wsi))
 						{
@@ -475,13 +510,59 @@ void SocketIO::onSubThreadStarted() {
 }
 
 int SocketIO::onSubThreadLoop() {
-	
+	if (_readyState == State::CLOSED || _readyState == State::CLOSING)
+    {
+        libwebsocket_context_destroy(_wsContext);
+        // return 1 to exit the loop.
+        return 1;
+    }
+    
+    if (_wsContext && _readyState != State::CLOSED && _readyState != State::CLOSING)
+    {
+        libwebsocket_service(_wsContext, 0);
+    }
+    
+    // Sleep 50 ms
+    Sleep(50);
+
+    // return 0 to continue the loop.
+    return 0;
 }
 
 void SocketIO::onSubThreadEnded() {
-	
+	printf("WEBSOCKET sub thread exit!\n");
 }
 
 void SocketIO::onUIThreadReceiveMessage(WsMessage* msg) {
-	
+	switch (msg->what) {
+        case WS_MSG_TO_UITHREAD_OPEN:
+            {
+                _delegate->onOpen(this);
+            }
+            break;
+        case WS_MSG_TO_UITHREAD_MESSAGE:
+            {
+                Data* data = (Data*)msg->obj;
+                _delegate->onMessage(this, *data);
+                CC_SAFE_DELETE_ARRAY(data->bytes);
+                CC_SAFE_DELETE(data);
+            }
+            break;
+        case WS_MSG_TO_UITHREAD_CLOSE:
+            {
+                //Waiting for the subThread safety exit
+                _wsHelper->joinSubThread();
+                _delegate->onClose(this);
+            }
+            break;
+        case WS_MSG_TO_UITHREAD_ERROR:
+            {
+                // FIXME: The exact error needs to be checked.
+                SocketIO::ErrorCode err = ErrorCode::CONNECTION_FAILURE;
+                _delegate->onError(this, err);
+            }
+            break;
+        default:
+            break;
+    }
 }

@@ -47,8 +47,15 @@ public:
         bool isBinary;
     };
 	
+	enum class ErrorCode
+    {
+        TIME_OUT,
+        CONNECTION_FAILURE,
+        UNKNOWN,
+    };
+	
 	SocketIO(const char* host,unsigned short port,
-				SOCKETIO_VERSION v = SIO_V_0_X,int ssl);
+				SOCKETIO_VERSION v = SIO_V_0_X,int ssl = 0);
 	
 	virtual ~SocketIO();
 	
@@ -78,7 +85,7 @@ private:
     struct libwebsocket_protocols* _wsProtocols;
 	SIODelegate* _delegate;
 	WsThreadHelper* _wsHelper;
-	
+	SOCKETIO_VERSION _version;
 	State _readyState;
 	std::string _host;
 	std::string _path;
