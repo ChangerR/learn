@@ -7,5 +7,7 @@ server.on('connection', function (socket) {
     socket.on('message', function (data) {
         console.log(data);
     });
-    socket.on('close', function () { });
+    socket.on('close', function () {
+		console.log("client end")
+	});
 });

@@ -1,5 +1,9 @@
 #include "websocket.h"
 #include <stdio.h>
+#include <windows.h>
+#ifdef _WIN32
+#pragma comment(lib,"websockets.lib")
+#endif
 
 class test_delegate : public WebSocket::Delegate {
 public:
@@ -10,6 +14,7 @@ public:
     }
 
     virtual void onMessage(WebSocket* ws,const WebSocket::Data& data) {
+		printf("We have accept data!!!\n");
         if(!data.isBinary)
             printf("RECV:%s\n",data.bytes);
     }
@@ -27,8 +32,11 @@ int main(int argc,char** argv) {
     test_delegate _del;
     WebSocket ws;
 
-    if(ws.init(_del,"ws://localhost:3000/")) {
-        while(ws.processMessage());
+	if (ws.init(_del,"ws://changer.site:3000/")) {
+		while (1) {
+			ws.processMessage();
+			Sleep(50);
+		}
     }
 
 }

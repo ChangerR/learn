@@ -2,6 +2,7 @@
 #define __LIBSOCKETIO_CONFIG_
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #elif defined(__linux__)
 #include <pthread.h>

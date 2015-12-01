@@ -1,9 +1,9 @@
 #include "config.h"
 #include "websocket.h"
-#include "libwebsockets.h"
 #include <assert.h>
 #include <stdio.h>
 #include <list>
+#include "libwebsockets.h"
 
 #define WS_WRITE_BUFFER_SIZE 2048
 
@@ -196,7 +196,7 @@ void WsThreadHelper::update()
     msg = *(_UIWsMessageQueue->begin());
     _UIWsMessageQueue->pop_front();
 
-	CC_MUTEX_LOCK(_UIWsMessageQueueMutex);
+	CC_MUTEX_UNLOCK(_UIWsMessageQueueMutex);
 
     if (_ws)
     {
@@ -573,7 +573,11 @@ int WebSocket::onSocketCallback(struct libwebsocket_context *ctx,
                         const size_t c_bufferSize = WS_WRITE_BUFFER_SIZE;
 
                         size_t remaining = data->len - data->issued;
-                        size_t n = std::min(remaining, c_bufferSize );
+#ifdef _WIN32
+                        size_t n = min(remaining, c_bufferSize );
+#elif defined(__linux__)
+						size_t n = std:: min(remaining, c_bufferSize);
+#endif
                         //fixme: the log is not thread safe
 //                        CCLOG("[websocket:send] total: %d, sent: %d, remaining: %d, buffer size: %d", static_cast<int>(data->len), static_cast<int>(data->issued), static_cast<int>(remaining), static_cast<int>(n));
 

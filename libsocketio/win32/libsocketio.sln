@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libsocketio", "libsocketio.vcxproj", "{6128E46E-FB2C-4E81-93C2-75ECA1098DDA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test1", "test1.vcxproj", "{23B193FA-1399-4B98-BE89-CE4D8D5970D6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6128E46E-FB2C-4E81-93C2-75ECA1098DDA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6128E46E-FB2C-4E81-93C2-75ECA1098DDA}.Debug|Win32.Build.0 = Debug|Win32
+		{6128E46E-FB2C-4E81-93C2-75ECA1098DDA}.Release|Win32.ActiveCfg = Release|Win32
+		{6128E46E-FB2C-4E81-93C2-75ECA1098DDA}.Release|Win32.Build.0 = Release|Win32
+		{23B193FA-1399-4B98-BE89-CE4D8D5970D6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{23B193FA-1399-4B98-BE89-CE4D8D5970D6}.Debug|Win32.Build.0 = Debug|Win32
+		{23B193FA-1399-4B98-BE89-CE4D8D5970D6}.Release|Win32.ActiveCfg = Release|Win32
+		{23B193FA-1399-4B98-BE89-CE4D8D5970D6}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
