@@ -1,8 +1,19 @@
 #include "websocket.h"
 #include <stdio.h>
-#include <windows.h>
+#include <stdlib.h>
 #ifdef _WIN32
+#include <windows.h>
 #pragma comment(lib,"websockets.lib")
+#endif
+
+bool running = true;
+
+#ifdef __linux__
+#include <unistd.h>
+#include <signal.h>
+void signal_handler(int sig) {
+    running = false;
+}
 #endif
 
 class test_delegate : public WebSocket::Delegate {
@@ -32,11 +43,24 @@ int main(int argc,char** argv) {
     test_delegate _del;
     WebSocket ws;
 
+#ifdef __linux__
+    if(signal(SIGINT, signal_handler) == SIG_ERR) {
+        printf("could not register signal handler\n");
+        exit(1);
+    }
+#endif
+
 	if (ws.init(_del,"ws://changer.site:3000/")) {
-		while (1) {
+		while (running) {
 			ws.processMessage();
+#ifdef _WIN32
 			Sleep(50);
+#else
+            usleep(50 * 1000);
+#endif
 		}
+
+        ws.close();
     }
 
 }
