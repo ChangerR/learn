@@ -1,11 +1,19 @@
 CPP = g++
-CPPFLAGS = -I libwebsockets/linux-x64/include -I . -c -g
+CPPFLAGS = -I libwebsockets/linux-x64/include -I . -I rapidjson/include -c -g
 LINK = g++
-OBJS = websocket.o
-LKFLAGS = -L libwebsockets/linux-x64/lib64 -lwebsockets -lpthread
-TARGET = test1
+OBJS = websocket.o HttpClient.o HttpCookie.o
+LKFLAGS = -L libwebsockets/linux-x64/lib64 -lwebsockets -lcurl -lpthread
+
+TARGET = test1 test2
+
+all:$(TARGET)
+	echo "Make all target"
+
 test1: $(OBJS) test/test1.o
 	$(LINK) -o $@ $(OBJS) test/test1.o $(LKFLAGS)
+
+test2:test/test2.o $(OBJS)
+	$(LINK) -o $@ test/test2.o $(OBJS) $(LKFLAGS)
 
 %.o:%.cpp
 	g++ $(CPPFLAGS) -o $@ $<
@@ -13,3 +21,4 @@ test1: $(OBJS) test/test1.o
 clean:
 	-rm *.o
 	-rm $(TARGET)
+	cd test&&rm *.o

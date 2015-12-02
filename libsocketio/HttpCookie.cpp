@@ -1,10 +1,12 @@
 #include "HttpCookie.h"
 #include <stdio.h>
+#include <string.h>
+#include <sstream>
 
 static std::string getStringFromFile(const char* filename) {
     std::string tmp;
     do {
-        FILE* cpfile = fopen(_cookieFileName,"rb");
+        FILE* cpfile = fopen(filename,"rb");
         size_t filelen = 0;
         char* buf = NULL;
         if(cpfile == NULL)
@@ -29,7 +31,7 @@ static std::string getStringFromFile(const char* filename) {
 
 void HttpCookie::readFile()
 {
-    std::string inString  = getStringFromFile(_cookieFileName);
+    std::string inString  = getStringFromFile(_cookieFileName.c_str());
 
 
     if(inString.length() != 0)
@@ -97,13 +99,13 @@ const std::vector<CookiesInfo>* HttpCookie::getCookies() const
 
 const CookiesInfo* HttpCookie::getMatchCookie(const std::string& url) const
 {
-    for(std::vector<CookiesInfo>::iterator iter = _cookies.begin(); iter != _cookies.end(); iter++)
+    for(std::vector<CookiesInfo>::const_iterator iter = _cookies.begin(); iter != _cookies.end(); iter++)
     {
         if(url.find(iter->domain) != std::string::npos)
             return &(*iter);
     }
 
-    return nullptr;
+    return NULL;
 }
 
 void HttpCookie::updateOrAddCookie(CookiesInfo* cookie)

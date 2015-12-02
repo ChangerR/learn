@@ -20,8 +20,9 @@ public:
         _requestType = UNKNOWN;
         _url.clear();
         _requestData.clear();
-        _pUserData.clear();
+        _headers.clear();
         _callback = NULL;
+        _pUserData = NULL;
     }
 
     virtual ~HttpRequest() {
@@ -81,6 +82,14 @@ public:
     inline void setCallback(HttpResponse_Callback _call) {
         _callback = _call;
     }
+
+    inline void setTag(const char* tag) {
+        _tag = tag;
+    }
+
+    inline const char* getTag() {
+        return _tag.c_str();
+    }
 protected:
     Type _requestType;
     std::vector<char> _requestData;
@@ -88,5 +97,6 @@ protected:
     std::vector<std::string> _headers;
     void* _pUserData;
     HttpResponse_Callback _callback;
+    std::string _tag;
 };
 #endif

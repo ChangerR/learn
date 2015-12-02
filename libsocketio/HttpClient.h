@@ -29,10 +29,12 @@ public:
 
 	int getTimeoutForRead();
 
+	void processRequest(HttpResponse* response, char* responseMessage);
+
 	void setSSLVerification(const std::string& caFile);
 
 	const std::string& getSSLVerification();
-	
+
 	HttpCookie* getCookie() const {
 		return _cookie;
 	}
@@ -45,6 +47,6 @@ protected:
 	HttpCookie* _cookie;
 
 	std::string _sslCaFilename;
-
+	char _responseMessage[HTTPCLIENT_RESPONSE_BUFFER_SIZE];
 };
 #endif

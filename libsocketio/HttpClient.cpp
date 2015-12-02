@@ -1,6 +1,6 @@
 #include "HttpClient.h"
 #include "curl/curl.h"
-
+#include <string.h>
 typedef size_t (*write_callback)(void *ptr, size_t size, size_t nmemb, void *stream);
 
 // Callback function used by libcurl for collect response data
@@ -67,6 +67,15 @@ static bool configureCURL(HttpClient* client, CURL* handle, char* errorBuffer)
 
     return true;
 }
+
+static int processGetTask(HttpClient* client, HttpRequest* request, write_callback callback, void *stream,
+                            long *errorCode, write_callback headerCallback, void *headerStream, char* errorBuffer);
+static int processPostTask(HttpClient* client, HttpRequest* request, write_callback callback, void *stream,
+                            long *errorCode, write_callback headerCallback, void *headerStream, char* errorBuffer);
+static int processPutTask(HttpClient* client,  HttpRequest* request, write_callback callback, void *stream,
+                            long *errorCode, write_callback headerCallback, void *headerStream, char* errorBuffer);
+static int processDeleteTask(HttpClient* client,  HttpRequest* request, write_callback callback, void *stream,
+                            long *errorCode, write_callback headerCallback, void *headerStream, char* errorBuffer);
 
 class CURLRaii
 {
@@ -153,3 +162,195 @@ public:
         return true;
     }
 };
+
+//Process Get Request
+static int processGetTask(HttpClient* client, HttpRequest* request, write_callback callback, void* stream, long* responseCode, write_callback headerCallback, void* headerStream, char* errorBuffer)
+{
+    CURLRaii curl;
+	bool ok = curl.init(client, request, callback, stream, headerCallback, headerStream, errorBuffer)
+            && curl.setOption(CURLOPT_FOLLOWLOCATION, true)
+            && curl.perform(responseCode);
+    return ok ? 0 : 1;
+}
+
+//Process POST Request
+static int processPostTask(HttpClient* client, HttpRequest* request, write_callback callback, void* stream, long* responseCode, write_callback headerCallback, void* headerStream, char* errorBuffer)
+{
+    CURLRaii curl;
+	bool ok = curl.init(client, request, callback, stream, headerCallback, headerStream, errorBuffer)
+            && curl.setOption(CURLOPT_POST, 1)
+            && curl.setOption(CURLOPT_POSTFIELDS, request->getRequestData())
+            && curl.setOption(CURLOPT_POSTFIELDSIZE, request->getRequestDataSize())
+            && curl.perform(responseCode);
+    return ok ? 0 : 1;
+}
+
+//Process PUT Request
+static int processPutTask(HttpClient* client, HttpRequest* request, write_callback callback, void* stream, long* responseCode, write_callback headerCallback, void* headerStream, char* errorBuffer)
+{
+    CURLRaii curl;
+	bool ok = curl.init(client, request, callback, stream, headerCallback, headerStream, errorBuffer)
+            && curl.setOption(CURLOPT_CUSTOMREQUEST, "PUT")
+            && curl.setOption(CURLOPT_POSTFIELDS, request->getRequestData())
+            && curl.setOption(CURLOPT_POSTFIELDSIZE, request->getRequestDataSize())
+            && curl.perform(responseCode);
+    return ok ? 0 : 1;
+}
+
+//Process DELETE Request
+static int processDeleteTask(HttpClient* client, HttpRequest* request, write_callback callback, void* stream, long* responseCode, write_callback headerCallback, void* headerStream, char* errorBuffer)
+{
+    CURLRaii curl;
+	bool ok = curl.init(client, request, callback, stream, headerCallback, headerStream, errorBuffer)
+            && curl.setOption(CURLOPT_CUSTOMREQUEST, "DELETE")
+            && curl.setOption(CURLOPT_FOLLOWLOCATION, true)
+            && curl.perform(responseCode);
+    return ok ? 0 : 1;
+}
+
+
+// Process Response
+void HttpClient::processRequest(HttpResponse* response, char* responseMessage)
+{
+	HttpRequest* request = response->getHttpRequest();
+	long responseCode = -1;
+	int retValue = 0;
+
+    if(request == NULL) {
+        printf("request is zero,please fix\n");
+        return;
+    }
+	// Process the request -> get response packet
+	switch (request->getRequestType())
+	{
+	case HttpRequest::GET: // HTTP GET
+		retValue = processGetTask(this, request,
+			writeData,
+			response->getResponseData(),
+			&responseCode,
+			writeHeaderData,
+			response->getResponseHeader(),
+			responseMessage);
+		break;
+
+	case HttpRequest::POST: // HTTP POST
+		retValue = processPostTask(this, request,
+			writeData,
+			response->getResponseData(),
+			&responseCode,
+			writeHeaderData,
+			response->getResponseHeader(),
+			responseMessage);
+		break;
+
+	case HttpRequest::PUT:
+		retValue = processPutTask(this, request,
+			writeData,
+			response->getResponseData(),
+			&responseCode,
+			writeHeaderData,
+			response->getResponseHeader(),
+			responseMessage);
+		break;
+
+	case HttpRequest::DELETE:
+		retValue = processDeleteTask(this, request,
+			writeData,
+			response->getResponseData(),
+			&responseCode,
+			writeHeaderData,
+			response->getResponseHeader(),
+			responseMessage);
+		break;
+
+	default:
+		printf("CCHttpClient: unknown request type, only GET and POSt are supported");
+		break;
+	}
+
+	// write data to HttpResponse
+	response->setResponseCode(responseCode);
+	if (retValue != 0)
+	{
+		response->setSucceed(false);
+		response->setErrorBuffer(responseMessage);
+	}
+	else
+	{
+		response->setSucceed(true);
+	}
+}
+
+HttpClient::HttpClient() {
+    _timeoutForConnect = 500;
+    _timeoutForRead = 5 * 1000;
+    _cookie = NULL;
+    _cookieFilename.clear();
+    _sslCaFilename.clear();
+    memset(_responseMessage, 0, HTTPCLIENT_RESPONSE_BUFFER_SIZE * sizeof(char));
+}
+
+HttpClient::~HttpClient() {
+
+}
+
+void HttpClient::setTimeoutForConnect(int value)
+{
+    _timeoutForConnect = value;
+}
+
+int HttpClient::getTimeoutForConnect()
+{
+    return _timeoutForConnect;
+}
+
+void HttpClient::setTimeoutForRead(int value)
+{
+    _timeoutForRead = value;
+}
+
+int HttpClient::getTimeoutForRead()
+{
+    return _timeoutForRead;
+}
+
+const std::string& HttpClient::getCookieFilename()
+{
+    return _cookieFilename;
+}
+
+const std::string& HttpClient::getSSLVerification()
+{
+    return _sslCaFilename;
+}
+
+void HttpClient::enableCookies(const char* cookieFile) {
+    _cookieFilename = cookieFile;
+}
+
+void HttpClient::setSSLVerification(const std::string& caFile)
+{
+    _sslCaFilename = caFile;
+}
+
+void HttpClient::send(HttpRequest* request) {
+
+}
+
+void HttpClient::sendImmediate(HttpRequest* request) {
+
+    if(request == NULL) {
+        return;
+    }
+
+    HttpResponse *response = new HttpResponse(request);
+
+    processRequest(response,_responseMessage);
+
+    HttpResponse_Callback _call = request->getCallback();
+
+    if(_call)
+        (*_call)(response,request->getUserData());
+
+    delete response;
+}
