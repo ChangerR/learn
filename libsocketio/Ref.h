@@ -1,18 +1,25 @@
 #ifndef __LIBSOCKETIO_REF_H
 #define __LIBSOCKETIO_REF_H
+#include "config.h"
 #ifdef __linux__
 #include <sys/time.h>
 #include <time.h>
 #include <stdio.h>
+inline long getTimeInMs() {
+	struct timeval t;
+
+	gettimeofday(&t, NULL);
+
+	return t.tv_sec * 1000 + t.tv_usec / 1000;
+}
 #endif
 
+#ifdef _WIN32
 inline long getTimeInMs() {
-    struct timeval t;
-
-    gettimeofday(&t,NULL);
-
-    return t.tv_sec * 1000 + t.tv_usec / 1000;
+	return GetTickCount();
 }
+#endif
+
 
 class Ref {
 public:

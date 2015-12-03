@@ -253,7 +253,7 @@ void HttpClient::processRequest(HttpResponse* response, char* responseMessage)
 			responseMessage);
 		break;
 
-	case HttpRequest::DELETE:
+	case HttpRequest::_DELETE:
 		retValue = processDeleteTask(this, request,
 			writeData,
 			response->getResponseData(),
@@ -282,7 +282,7 @@ void HttpClient::processRequest(HttpResponse* response, char* responseMessage)
 }
 
 HttpClient::HttpClient() {
-    _timeoutForConnect = 500;
+    _timeoutForConnect = 1000;
     _timeoutForRead = 5 * 1000;
     _cookie = NULL;
     _cookieFilename.clear();

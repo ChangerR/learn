@@ -385,7 +385,7 @@ void SIOClientImpl::handshake()
 
     CCLOG("SIOClientImpl::handshake() waiting");
 
-    client.send(request);
+    client.sendImmediate(request);
 
     delete request;
 
@@ -581,11 +581,16 @@ SIOClientImpl* SIOClientImpl::create(const std::string& host, int port)
     {
         return s;
     }
+
+	return NULL;
 }
 
 SIOClient* SIOClientImpl::getClient(const std::string& endpoint)
 {
-    return _clients.at(endpoint);
+	if (_clients.find(endpoint) != _clients.end())
+		return _clients.at(endpoint);
+	else
+		return NULL;
 }
 
 void SIOClientImpl::addClient(const std::string& endpoint, SIOClient* client)
@@ -1175,7 +1180,10 @@ SIOClient* SocketIO::connect(const std::string& uri, SocketIO::SIODelegate& dele
 
 SIOClientImpl* SocketIO::getSocket(const std::string& uri)
 {
-    return _sockets.at(uri);
+	if (_sockets.find(uri) != _sockets.end())
+		return _sockets.at(uri);
+	else
+		return NULL;
 }
 
 void SocketIO::addSocket(const std::string& uri, SIOClientImpl* socket)
@@ -1186,12 +1194,20 @@ void SocketIO::addSocket(const std::string& uri, SIOClientImpl* socket)
 
 void SocketIO::removeSocket(const std::string& uri)
 {
-    _sockets.at(uri)->release();
-    _sockets.erase(uri);
+	if (_sockets.find(uri) != _sockets.end()) {
+		_sockets.at(uri)->release();
+		_sockets.erase(uri);
+	}
+}
+
+void SocketIO::addUnhandleSocket(SIOClientImpl* soc) {
+	_unhandle_sockets.push_back(soc);
 }
 
 void SocketIO::dispatchMessage() {
+
     for(std::map<std::string, SIOClientImpl*>::iterator iter = _sockets.begin();iter != _sockets.end();++iter) {
+		CCLOG("We dispatch message:%s", iter->first);
         iter->second->_ws->processMessage();
         iter->second->schedule();
     }

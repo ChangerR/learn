@@ -24,9 +24,36 @@
     <ClInclude Include="..\websocket.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\HttpClient.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HttpCookie.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HttpRequest.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HttpResponse.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SocketIO.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Ref.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\websocket.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\HttpClient.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\HttpCookie.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SocketIO.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -4,9 +4,13 @@
 #include <stdio.h>
 #include "Ref.h"
 #include <map>
+#include <list>
 
 #define CC_UNUSED_PARAM(v) (void)(v)
-#define CCLOG printf
+#define CCLOG(fmt,...) do { \
+							printf(fmt, ##__VA_ARGS__); \
+							printf("\n"); \
+							}while (0)
 
 class SIOClientImpl;
 class SIOClient;
@@ -45,9 +49,10 @@ private:
     static SocketIO *_inst;
 
     std::map<std::string, SIOClientImpl*> _sockets;
-
+	std::list<SIOClientImpl*> _unhandle_sockets;
     SIOClientImpl* getSocket(const std::string& uri);
     void addSocket(const std::string& uri, SIOClientImpl* socket);
+	void addUnhandleSocket(SIOClientImpl* soc);
     void removeSocket(const std::string& uri);
 
     friend class SIOClientImpl;

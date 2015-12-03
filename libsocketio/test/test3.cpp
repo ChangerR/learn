@@ -1,6 +1,11 @@
 #include "SocketIO.h"
 bool running = true;
 
+#ifdef _WIN32
+#pragma comment(lib,"libcurl.lib")
+#pragma comment(lib,"websockets.lib")
+#endif
+
 #ifdef __linux__
 #include <unistd.h>
 #include <signal.h>
@@ -37,6 +42,9 @@ int main() {
     if(client != NULL) {
         while (running) {
             SocketIO::getInstance()->dispatchMessage();
+#ifdef _WIN32
+			Sleep(1);
+#endif
         }
         client->disconnect();
     }

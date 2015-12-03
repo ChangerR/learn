@@ -9,10 +9,10 @@ typedef void (*HttpResponse_Callback)(HttpResponse*,void*);
 class HttpRequest {
 public:
     enum Type {
-        GET,
+        GET = 0,
         POST,
         PUT,
-        DELETE,
+        _DELETE,
         UNKNOWN,
     };
 

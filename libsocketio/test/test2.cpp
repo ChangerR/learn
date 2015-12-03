@@ -1,6 +1,10 @@
 #include "HttpClient.h"
 #include <stdio.h>
 
+#ifdef _WIN32
+#pragma comment(lib,"libcurl.lib")
+#endif
+
 void test_callback(HttpResponse* res,void* data) {
     printf("CURL SUCCESS:%s\n",res->isSucceed()?"TRUE":"FALSE");
     printf("CURL RETURN CODE:%d\n",(int)res->getResponseCode());
