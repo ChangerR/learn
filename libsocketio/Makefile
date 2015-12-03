@@ -1,7 +1,7 @@
 CPP = g++
 CPPFLAGS = -I libwebsockets/linux-x64/include -I . -I rapidjson/include -c -g
 LINK = g++
-OBJS = websocket.o HttpClient.o HttpCookie.o
+OBJS = websocket.o HttpClient.o HttpCookie.o SocketIO.o
 LKFLAGS = -L libwebsockets/linux-x64/lib64 -lwebsockets -lcurl -lpthread
 
 TARGET = test1 test2
@@ -15,6 +15,9 @@ test1: $(OBJS) test/test1.o
 test2:test/test2.o $(OBJS)
 	$(LINK) -o $@ test/test2.o $(OBJS) $(LKFLAGS)
 
+test3:test/test3.o $(OBJS)
+	$(LINK) -o $@ test/test3.o $(OBJS) $(LKFLAGS)
+	
 %.o:%.cpp
 	g++ $(CPPFLAGS) -o $@ $<
 

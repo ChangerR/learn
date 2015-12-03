@@ -2,13 +2,14 @@
 #include <algorithm>
 #include <sstream>
 #include <iterator>
-#include "WebSocket.h"
+#include <map>
+#include "websocket.h"
 #include "HttpClient.h"
 
-#include "json/rapidjson.h"
-#include "json/document.h"
-#include "json/stringbuffer.h"
-#include "json/writer.h"
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 
 class SocketIOPacketV10x;
 
@@ -142,6 +143,7 @@ int SocketIOPacket::typeAsNumber()const
     }
     return (int)num;
 }
+
 const std::string& SocketIOPacket::typeForIndex(int index)const
 {
     return _types.at(index);
@@ -149,9 +151,7 @@ const std::string& SocketIOPacket::typeForIndex(int index)const
 
 void SocketIOPacket::addData(const std::string& data)
 {
-
     this->_args.push_back(data);
-
 }
 
 std::string SocketIOPacket::stringify()const
@@ -176,9 +176,9 @@ std::string SocketIOPacket::stringify()const
 
         writer.StartArray();
 
-        for (auto& item : _args)
+        for(std::vector<std::string>::const_iterator item = _args.begin(); item != _args.end();++item)
         {
-            writer.String(item.c_str());
+            writer.String(item->c_str());
         }
 
         writer.EndArray();
@@ -240,9 +240,9 @@ std::string SocketIOPacketV10x::stringify()const
     writer.StartArray();
     writer.String(_name.c_str());
 
-    for (auto& item : _args)
+    for(std::vector<std::string>::const_iterator item = _args.begin(); item != _args.end();++item)
     {
-        writer.String(item.c_str());
+        writer.String(item->c_str());
     }
 
     writer.EndArray();
@@ -271,10 +271,10 @@ SocketIOPacket * SocketIOPacket::createPacketWithType(std::string type, SocketIO
     SocketIOPacket *ret;
     switch (version)
     {
-    case SocketIOPacket::SocketIOVersion::V09x:
+    case SocketIOPacket::V09x:
         ret = new SocketIOPacket;
         break;
-    case SocketIOPacket::SocketIOVersion::V10x:
+    case SocketIOPacket::V10x:
         ret = new SocketIOPacketV10x;
         break;
     }
@@ -288,10 +288,10 @@ SocketIOPacket * SocketIOPacket::createPacketWithTypeIndex(int type, SocketIOPac
     SocketIOPacket *ret;
     switch (version)
     {
-    case SocketIOPacket::SocketIOVersion::V09x:
+    case SocketIOPacket::V09x:
         ret = new SocketIOPacket;
         break;
-    case SocketIOPacket::SocketIOVersion::V10x:
+    case SocketIOPacket::V10x:
         return new SocketIOPacketV10x;
         break;
     }
@@ -300,6 +300,7 @@ SocketIOPacket * SocketIOPacket::createPacketWithTypeIndex(int type, SocketIOPac
 }
 
 class SIOClientImpl :
+    public Ref,
     public WebSocket::Delegate
 {
 private:
@@ -310,7 +311,7 @@ private:
 
     WebSocket *_ws;
 
-    Map<std::string, SIOClient*> _clients;
+    std::map<std::string, SIOClient*> _clients;
 
 public:
     SIOClientImpl(const std::string& host, int port);
@@ -329,7 +330,7 @@ public:
     void handshake();
     static void handshakeResponse(HttpResponse *response,void* data);
     void openSocket();
-    void heartbeat(float dt);
+    void update(long dt);
 
     SIOClient* getClient(const std::string& endpoint);
     void addClient(const std::string& endpoint, SIOClient* client);
@@ -341,7 +342,7 @@ public:
     void send(SocketIOPacket *packet);
     void emit(const std::string& endpoint, const std::string& eventname, const std::string& args);
 
-
+    friend class SocketIO;
 };
 
 
@@ -377,10 +378,10 @@ void SIOClientImpl::handshake()
 
     HttpRequest* request = new (std::nothrow) HttpRequest();
     request->setUrl(pre.str().c_str());
-    request->setRequestType(HttpRequest::Type::GET);
+    request->setRequestType(HttpRequest::GET);
     request->setUserData(this);
-    reuqest->setTag("handshake");
-    request->setResponseCallback(SIOClientImpl::handshakeResponse);
+    request->setTag("handshake");
+    request->setCallback(SIOClientImpl::handshakeResponse);
 
     CCLOG("SIOClientImpl::handshake() waiting");
 
@@ -411,7 +412,7 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
         CCLOG("SIOClientImpl::handshake() failed");
         CCLOG("error buffer: %s", response->getErrorBuffer());
 
-        for (auto iter = _clients.begin(); iter != _clients.end(); ++iter)
+        for (std::map<std::string, SIOClient*>::iterator iter =pointer-> _clients.begin(); iter != pointer->_clients.end(); ++iter)
         {
             iter->second->getDelegate()->onError(iter->second, response->getErrorBuffer());
         }
@@ -439,7 +440,7 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
     if (res.at(res.size() - 1) == '}') {
 
         CCLOG("SIOClientImpl::handshake() Socket.IO 1.x detected");
-        pointer->_version = SocketIOPacket::SocketIOVersion::V10x;
+        pointer->_version = SocketIOPacket::V10x;
         // sample: 97:0{"sid":"GMkL6lzCmgMvMs9bAAAA","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":60000}
 
         std::string::size_type a, b;
@@ -451,9 +452,6 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
         b = temp.find(",");
 
         sid = temp.substr(a + 2, b - (a + 3));
-
-        temp = temp.erase(0, b + 1);
-
         // chomp past the upgrades
         a = temp.find(":");
         b = temp.find(",");
@@ -480,7 +478,7 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
     else {
 
         CCLOG("SIOClientImpl::handshake() Socket.IO 0.9.x detected");
-        _version = SocketIOPacket::SocketIOVersion::V09x;
+        pointer->_version = SocketIOPacket::V09x;
         // sample: 3GYzE9md2Ig-lm3cf8Rv:60:60:websocket,htmlfile,xhr-polling,jsonp-polling
         size_t pos = 0;
 
@@ -523,10 +521,10 @@ void SIOClientImpl::openSocket()
 
     switch (_version)
     {
-        case SocketIOPacket::SocketIOVersion::V09x:
+        case SocketIOPacket::V09x:
             s << _uri << "/socket.io/1/websocket/" << _sid;
             break;
-        case SocketIOPacket::SocketIOVersion::V10x:
+        case SocketIOPacket::V10x:
             s << _uri << "/socket.io/1/websocket/?EIO=2&transport=websocket&sid=" << _sid;
             break;
     }
@@ -566,7 +564,7 @@ void SIOClientImpl::disconnect()
         _ws->send(s);
     }
 
-    Director::getInstance()->getScheduler()->unscheduleAllForTarget(this);
+    setScheduleTime(-1);
 
     _ws->close();
 
@@ -583,8 +581,6 @@ SIOClientImpl* SIOClientImpl::create(const std::string& host, int port)
     {
         return s;
     }
-
-    return NULL;
 }
 
 SIOClient* SIOClientImpl::getClient(const std::string& endpoint)
@@ -594,7 +590,8 @@ SIOClient* SIOClientImpl::getClient(const std::string& endpoint)
 
 void SIOClientImpl::addClient(const std::string& endpoint, SIOClient* client)
 {
-    _clients.insert(endpoint, client);
+    client->retain();
+    _clients.insert(std::pair<std::string,SIOClient*>(endpoint, client));
 }
 
 void SIOClientImpl::connectToEndpoint(const std::string& endpoint)
@@ -604,10 +601,10 @@ void SIOClientImpl::connectToEndpoint(const std::string& endpoint)
     this->send(packet);
 }
 
+
 void SIOClientImpl::disconnectFromEndpoint(const std::string& endpoint)
 {
     _clients.erase(endpoint);
-
     if (_clients.empty() || endpoint == "/")
     {
         CCLOG("SIOClientImpl::disconnectFromEndpoint out of endpoints, checking for disconnect");
@@ -625,7 +622,7 @@ void SIOClientImpl::disconnectFromEndpoint(const std::string& endpoint)
     }
 }
 
-void SIOClientImpl::heartbeat(float dt)
+void SIOClientImpl::update(long dt)
 {
     CC_UNUSED_PARAM(dt);
     SocketIOPacket *packet = SocketIOPacket::createPacketWithType("heartbeat", _version);
@@ -639,7 +636,7 @@ void SIOClientImpl::heartbeat(float dt)
 void SIOClientImpl::send(const std::string& endpoint, const std::string& s)
 {
     switch (_version) {
-    case SocketIOPacket::SocketIOVersion::V09x:
+    case SocketIOPacket::V09x:
 		{
 			SocketIOPacket *packet = SocketIOPacket::createPacketWithType("message", _version);
 			packet->setEndpoint(endpoint);
@@ -647,7 +644,7 @@ void SIOClientImpl::send(const std::string& endpoint, const std::string& s)
 			this->send(packet);
 			break;
 		}
-    case SocketIOPacket::SocketIOVersion::V10x:
+    case SocketIOPacket::V10x:
 		{
 			this->emit(endpoint, "message", s);
 			break;
@@ -684,15 +681,17 @@ void SIOClientImpl::onOpen(WebSocket* ws)
 
     SocketIO::getInstance()->addSocket(_uri, this);
 
-    if (_version == SocketIOPacket::SocketIOVersion::V10x)
+    if (_version == SocketIOPacket::V10x)
     {
         std::string s = "5";//That's a ping https://github.com/Automattic/engine.io-parser/blob/1b8e077b2218f4947a69f5ad18be2a512ed54e93/lib/index.js#L21
         _ws->send(s.data());
     }
 
-    Director::getInstance()->getScheduler()->schedule(CC_SCHEDULE_SELECTOR(SIOClientImpl::heartbeat), this, (_heartbeat * .9f), false);
+    //Director::getInstance()->getScheduler()->schedule(CC_SCHEDULE_SELECTOR(SIOClientImpl::heartbeat), this, (_heartbeat * .9f), false);
 
-    for (auto iter = _clients.begin(); iter != _clients.end(); ++iter)
+    setScheduleTime((_heartbeat * 750));
+
+    for ( std::map<std::string, SIOClient*>::iterator iter = _clients.begin(); iter != _clients.end(); ++iter)
     {
         iter->second->onOpen();
     }
@@ -713,7 +712,7 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
 
     switch (_version)
     {
-        case SocketIOPacket::SocketIOVersion::V09x:
+        case SocketIOPacket::V09x:
         {
             std::string msgid, endpoint, s_data, eventname;
 
@@ -810,7 +809,7 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
             }
         }
         break;
-        case SocketIOPacket::SocketIOVersion::V10x:
+        case SocketIOPacket::V10x:
         {
             switch (control)
             {
@@ -895,7 +894,7 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
                     std::string eventname = payload.substr(payloadFirstSlashPos + 1,
                                                            payloadSecondSlashPos - payloadFirstSlashPos + 1);
 
-                    CCLOG("event name %s between %i and %i", eventname.c_str(),
+                    CCLOG("event name %s between %ld and %ld", eventname.c_str(),
                               payloadFirstSlashPos, payloadSecondSlashPos);
 
                     payload = payload.substr(payloadSecondSlashPos + 4,
@@ -941,7 +940,7 @@ void SIOClientImpl::onClose(WebSocket* ws)
     CC_UNUSED_PARAM(ws);
     if (!_clients.empty())
     {
-        for (auto iter = _clients.begin(); iter != _clients.end(); ++iter)
+        for (std::map<std::string, SIOClient*>::iterator iter = _clients.begin(); iter != _clients.end(); ++iter)
         {
             iter->second->socketClosed();
         }
@@ -1044,19 +1043,156 @@ void SIOClient::fireEvent(const std::string& eventName, const std::string& data)
 
     _delegate->fireEventToScript(this, eventName, data);
 
-    if(_eventRegistry[eventName])
-    {
-        SIOEvent e = _eventRegistry[eventName];
+    SIOEvent e = _eventRegistry[eventName];
 
-        e(this, data);
+    if(e._call != NULL)
+        e._call(this, data,e._userData);
+    else
+        CCLOG("SIOClient::fireEvent no native event with name %s found", eventName.c_str());
 
-        return;
-    }
+    return;
 
-    CCLOG("SIOClient::fireEvent no native event with name %s found", eventName.c_str());
 }
 
 void SIOClient::setTag(const char* tag)
 {
     _tag = tag;
+}
+
+//begin SocketIO methods
+SocketIO *SocketIO::_inst = NULL;
+
+SocketIO::SocketIO()
+{
+}
+
+SocketIO::~SocketIO(void)
+{
+    for(std::map<std::string, SIOClientImpl*>::iterator iter = _sockets.begin();iter != _sockets.end();++iter) {
+        iter->second->release();
+    }
+}
+
+SocketIO* SocketIO::getInstance()
+{
+    if (NULL == _inst)
+        _inst = new (std::nothrow) SocketIO();
+
+    return _inst;
+}
+
+void SocketIO::destroyInstance()
+{
+    CC_SAFE_DELETE(_inst);
+}
+
+SIOClient* SocketIO::connect(const std::string& uri, SocketIO::SIODelegate& delegate)
+{
+    std::string host = uri;
+    int port = 0;
+    size_t pos = 0;
+
+    pos = host.find("//");
+    if (pos != std::string::npos)
+    {
+        host.erase(0, pos+2);
+    }
+
+    pos = host.find(":");
+    if (pos != std::string::npos)
+    {
+        port = atoi(host.substr(pos+1, host.size()).c_str());
+    }
+
+    pos = host.find("/", 0);
+    std::string path = "/";
+    if (pos != std::string::npos)
+    {
+        path += host.substr(pos + 1, host.size());
+    }
+
+    pos = host.find(":");
+    if (pos != std::string::npos)
+    {
+        host.erase(pos, host.size());
+    }else{
+        host.erase(pos, host.size());
+    }
+
+    std::stringstream s;
+    s << host << ":" << port;
+
+    SIOClientImpl* socket = NULL;
+    SIOClient *c = NULL;
+
+    socket = SocketIO::getInstance()->getSocket(s.str());
+
+    if(socket == NULL)
+    {
+        //create a new socket, new client, connect
+        socket = SIOClientImpl::create(host, port);
+
+        c = new (std::nothrow) SIOClient(host, port, path, socket, delegate);
+
+        socket->addClient(path, c);
+
+        socket->connect();
+    }
+    else
+    {
+        //check if already connected to endpoint, handle
+        c = socket->getClient(path);
+
+        if(c == NULL)
+        {
+            c = new (std::nothrow) SIOClient(host, port, path, socket, delegate);
+
+            socket->addClient(path, c);
+
+            socket->connectToEndpoint(path);
+        }else{
+    	    CCLOG("SocketIO: disconnect previous client");
+    	    c->disconnect();
+
+    	    CCLOG("SocketIO: recreate a new socket, new client, connect");
+    	    SIOClientImpl* newSocket = NULL;
+    	    SIOClient *newC = NULL;
+
+    	    newSocket = SIOClientImpl::create(host, port);
+
+        	newC = new (std::nothrow) SIOClient(host, port, path, newSocket, delegate);
+
+    	    newSocket->addClient(path, newC);
+
+    	    newSocket->connect();
+
+    	    return newC;
+    	}
+    }
+
+    return c;
+}
+
+SIOClientImpl* SocketIO::getSocket(const std::string& uri)
+{
+    return _sockets.at(uri);
+}
+
+void SocketIO::addSocket(const std::string& uri, SIOClientImpl* socket)
+{
+    socket->retain();
+    _sockets.insert(std::pair<std::string,SIOClientImpl*>(uri, socket));
+}
+
+void SocketIO::removeSocket(const std::string& uri)
+{
+    _sockets.at(uri)->release();
+    _sockets.erase(uri);
+}
+
+void SocketIO::dispatchMessage() {
+    for(std::map<std::string, SIOClientImpl*>::iterator iter = _sockets.begin();iter != _sockets.end();++iter) {
+        iter->second->_ws->processMessage();
+        iter->second->schedule();
+    }
 }

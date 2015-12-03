@@ -2,6 +2,8 @@
 #define __LIBSOCKETIO_SOCKETIO_H
 #include <string>
 #include <stdio.h>
+#include "Ref.h"
+#include <map>
 
 #define CC_UNUSED_PARAM(v) (void)(v)
 #define CCLOG printf
@@ -28,11 +30,40 @@ public:
        virtual void fireEventToScript(SIOClient* client, const std::string& eventName, const std::string& data) { CC_UNUSED_PARAM(client); CCLOG("SIODelegate event '%s' fired with data: %s", eventName.c_str(), data.c_str()); };
     };
 
-   static SIOClient* connect(const std::string& uri, SocketIO::SIODelegate& delegate);
+    static SIOClient* connect(const std::string& uri, SocketIO::SIODelegate& delegate);
 
-}
+    static SocketIO* getInstance();
+    static void destroyInstance();
 
-class SIOClient
+    void dispatchMessage();
+
+private:
+
+    SocketIO();
+    virtual ~SocketIO(void);
+
+    static SocketIO *_inst;
+
+    std::map<std::string, SIOClientImpl*> _sockets;
+
+    SIOClientImpl* getSocket(const std::string& uri);
+    void addSocket(const std::string& uri, SIOClientImpl* socket);
+    void removeSocket(const std::string& uri);
+
+    friend class SIOClientImpl;
+};
+
+typedef void (*SIOEventCall)(SIOClient*,const std::string&,void*);
+
+class SIOEvent {
+public:
+    SIOEvent():_call(NULL),_userData(NULL){}
+    SIOEventCall _call;
+    void* _userData;
+};
+
+class SIOClient:
+    public Ref
 {
 private:
     int _port;
@@ -42,7 +73,7 @@ private:
 
     SocketIO::SIODelegate* _delegate;
 
-    EventRegistry _eventRegistry;
+    std::map<std::string,SIOEvent> _eventRegistry;
 
     void fireEvent(const std::string& eventName, const std::string& data);
 
