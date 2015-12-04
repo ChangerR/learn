@@ -18,14 +18,23 @@ class TestSIO_Delegate :
     public SocketIO::SIODelegate
 {
 public:
+    virtual void onConnect(SIOClient* client) {
+        client->emit("Hello","{1:\"tests\"}");
+    }
+
     virtual void onClose(SIOClient* client) {
         printf("socket io close\n");
     }
 
     virtual void onError(SIOClient* client, const std::string& data) {
         printf("socket io occur error\n");
+        running = false;
     }
 };
+
+void news_call(SIOClient* client,const std::string& data,void* user) {
+    printf("[INFO] we accept:%s\n",data.c_str());
+}
 
 int main() {
     TestSIO_Delegate _del;
@@ -40,11 +49,15 @@ int main() {
     SIOClient* client = SocketIO::connect("changer.site:8080",_del);
 
     if(client != NULL) {
+        SIOEvent e;
+        e._call = news_call;
+        e._userData = NULL;
+
+        client->on("news",e);
+
         while (running) {
             SocketIO::getInstance()->dispatchMessage();
-#ifdef _WIN32
-			Sleep(1);
-#endif
+            CC_SLEEP(1);
         }
         client->disconnect();
     }

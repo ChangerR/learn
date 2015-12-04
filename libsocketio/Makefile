@@ -4,10 +4,10 @@ LINK = g++
 OBJS = websocket.o HttpClient.o HttpCookie.o SocketIO.o
 LKFLAGS = -L libwebsockets/linux-x64/lib64 -lwebsockets -lcurl -lpthread
 
-TARGET = test1 test2
+TARGET = test1 test2 test3
 
 all:$(TARGET)
-	echo "Make all target"
+	@echo "Make all target"
 
 test1: $(OBJS) test/test1.o
 	$(LINK) -o $@ $(OBJS) test/test1.o $(LKFLAGS)
@@ -17,7 +17,7 @@ test2:test/test2.o $(OBJS)
 
 test3:test/test3.o $(OBJS)
 	$(LINK) -o $@ test/test3.o $(OBJS) $(LKFLAGS)
-	
+
 %.o:%.cpp
 	g++ $(CPPFLAGS) -o $@ $<
 

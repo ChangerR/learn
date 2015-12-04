@@ -10,7 +10,9 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
-
+#ifdef __linux__
+#include <sys/time.h>
+#endif
 class SocketIOPacketV10x;
 
 class SocketIOPacket
@@ -313,6 +315,13 @@ private:
 
     std::map<std::string, SIOClient*> _clients;
 
+    cc_pthread_t _heartbeatThread;
+    bool _heartbeatRunning;
+#ifdef __linux__
+    cc_mutex_t _heartbeatThreadMutex;
+    pthread_cond_t _heartbeatThreadIntCond;
+#endif
+
 public:
     SIOClientImpl(const std::string& host, int port);
     virtual ~SIOClientImpl(void);
@@ -330,8 +339,14 @@ public:
     void handshake();
     static void handshakeResponse(HttpResponse *response,void* data);
     void openSocket();
-    void update(long dt);
-
+    void heartbeat(long dt);
+    void createHeartBeatThread();
+    void closeHeartBeatThread();
+#ifdef _WIN32
+    static DWORD WINAPI hbThreadEntryFunc(LPVOID);
+#elif defined(__linux__)
+    static void* hbThreadEntryFunc(void*);
+#endif
     SIOClient* getClient(const std::string& endpoint);
     void addClient(const std::string& endpoint, SIOClient* client);
 
@@ -384,7 +399,7 @@ void SIOClientImpl::handshake()
     request->setCallback(SIOClientImpl::handshakeResponse);
 
     CCLOG("SIOClientImpl::handshake() waiting");
-
+    client.setTimeoutForConnect(5000);
     client.sendImmediate(request);
 
     delete request;
@@ -443,6 +458,15 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
         pointer->_version = SocketIOPacket::V10x;
         // sample: 97:0{"sid":"GMkL6lzCmgMvMs9bAAAA","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":60000}
 
+        rapidjson::Document d;
+        d.Parse(res.c_str() + 4);
+
+        sid = d["sid"].GetString();
+
+        heartbeat = d["pingInterval"].GetInt() ;
+
+        timeout = d["pingTimeout"].GetInt();
+        /*
         std::string::size_type a, b;
         a = res.find('{');
         std::string temp = res.substr(a, res.size() - a);
@@ -473,7 +497,9 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
         std::string timeout_str = temp.substr(a + 1, b - a);
         timeout = atoi(timeout_str.c_str()) / 1000;
         CCLOG("done parsing 1.x");
-
+        */
+        //CCLOG("parse 1.x sid=%s heartbeat=%d timeout=%d",sid.c_str(),heartbeat,timeout);
+        //if(heartbeat == 0)heartbeat = 6000;
     }
     else {
 
@@ -492,13 +518,13 @@ void SIOClientImpl::handshakeResponse(HttpResponse *response,void* data)
         pos = res.find(":");
         if (pos != std::string::npos)
         {
-            heartbeat = atoi(res.substr(pos + 1, res.size()).c_str());
+            heartbeat = atoi(res.substr(pos + 1, res.size()).c_str()) * 1000;
         }
 
         pos = res.find(":");
         if (pos != std::string::npos)
         {
-            timeout = atoi(res.substr(pos + 1, res.size()).c_str());
+            timeout = atoi(res.substr(pos + 1, res.size()).c_str()) * 1000;
         }
 
     }
@@ -564,8 +590,6 @@ void SIOClientImpl::disconnect()
         _ws->send(s);
     }
 
-    setScheduleTime(-1);
-
     _ws->close();
 
     _connected = false;
@@ -627,7 +651,60 @@ void SIOClientImpl::disconnectFromEndpoint(const std::string& endpoint)
     }
 }
 
-void SIOClientImpl::update(long dt)
+#ifdef _WIN32
+DWORD WINAPI SIOClientImpl::hbThreadEntryFunc(LPVOID) {
+
+}
+#elif defined(__linux__)
+void* SIOClientImpl::hbThreadEntryFunc(void* data) {
+    SIOClientImpl* pointer = (SIOClientImpl*)data;
+    struct timeval now;
+	struct timespec outtime;
+
+    CC_MUTEX_LOCK(pointer->_heartbeatThreadMutex);
+
+    while(pointer->_heartbeatRunning) {
+        gettimeofday(&now, NULL);
+        outtime.tv_sec = now.tv_sec + long(pointer->_heartbeat * 0.0009f);
+        outtime.tv_nsec = (now.tv_usec ) * 1000;
+        pthread_cond_timedwait(&pointer->_heartbeatThreadIntCond, &pointer->_heartbeatThreadMutex, &outtime);
+        pointer->heartbeat(0);
+        CCLOG("running heartbeat thread");
+    }
+
+    CC_MUTEX_UNLOCK(pointer->_heartbeatThreadMutex);
+    return NULL;
+}
+#endif
+
+void SIOClientImpl::createHeartBeatThread() {
+    _heartbeatRunning = true;
+#ifdef _WIN32
+    _heartbeatThread = CreateThread(NULL,0,SIOClientImpl::hbThreadEntryFunc,(void*)this,0,NULL);
+#elif defined(__linux__)
+    CC_INIT_MUTEX(_heartbeatThreadMutex);
+    pthread_cond_init(&_heartbeatThreadIntCond,NULL);
+
+    pthread_create(&_heartbeatThread,NULL,SIOClientImpl::hbThreadEntryFunc,(void*)this);
+#endif
+}
+
+void SIOClientImpl::closeHeartBeatThread() {
+    _heartbeatRunning = false;
+#ifdef _WIN32
+    WaitForSingleObject(_heartbeatThread, INFINITE);
+    CloseHandle(_heartbeatThread);
+#elif defined(__linux__)
+    CC_MUTEX_LOCK(_heartbeatThreadMutex);
+    pthread_cond_signal(&_heartbeatThreadIntCond);
+    CC_MUTEX_UNLOCK(_heartbeatThreadMutex);
+
+    pthread_join(_heartbeatThread,NULL);
+    CC_DESTROY_MUTEX(_heartbeatThreadMutex);
+#endif
+}
+
+void SIOClientImpl::heartbeat(long dt)
 {
     CC_UNUSED_PARAM(dt);
     SocketIOPacket *packet = SocketIOPacket::createPacketWithType("heartbeat", _version);
@@ -694,12 +771,12 @@ void SIOClientImpl::onOpen(WebSocket* ws)
 
     //Director::getInstance()->getScheduler()->schedule(CC_SCHEDULE_SELECTOR(SIOClientImpl::heartbeat), this, (_heartbeat * .9f), false);
 
-    setScheduleTime((_heartbeat * 750));
-
     for ( std::map<std::string, SIOClient*>::iterator iter = _clients.begin(); iter != _clients.end(); ++iter)
     {
         iter->second->onOpen();
     }
+
+    createHeartBeatThread();
 
     CCLOG("SIOClientImpl::onOpen socket connected!");
 }
@@ -758,32 +835,32 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
             switch (control)
             {
             case 0:
-                CCLOG("Received Disconnect Signal for Endpoint: %s\n", endpoint.c_str());
+                CCLOG("Received Disconnect Signal for Endpoint: %s", endpoint.c_str());
                 disconnectFromEndpoint(endpoint);
                 c->fireEvent("disconnect", payload);
                 break;
             case 1:
-                CCLOG("Connected to endpoint: %s \n", endpoint.c_str());
+                CCLOG("Connected to endpoint: %s", endpoint.c_str());
                 if (c) {
                     c->onConnect();
                     c->fireEvent("connect", payload);
                 }
                 break;
             case 2:
-                CCLOG("Heartbeat received\n");
+                CCLOG("Heartbeat received");
                 break;
             case 3:
-                CCLOG("Message received: %s \n", s_data.c_str());
+                CCLOG("Message received: %s", s_data.c_str());
                 if (c) c->getDelegate()->onMessage(c, s_data);
                 if (c) c->fireEvent("message", s_data);
                 break;
             case 4:
-                CCLOG("JSON Message Received: %s \n", s_data.c_str());
+                CCLOG("JSON Message Received: %s", s_data.c_str());
                 if (c) c->getDelegate()->onMessage(c, s_data);
                 if (c) c->fireEvent("json", s_data);
                 break;
             case 5:
-                CCLOG("Event Received with data: %s \n", s_data.c_str());
+                CCLOG("Event Received with data: %s", s_data.c_str());
 
                 if (c)
                 {
@@ -801,15 +878,15 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
 
                 break;
             case 6:
-                CCLOG("Message Ack\n");
+                CCLOG("Message Ack");
                 break;
             case 7:
-                CCLOG("Error\n");
+                CCLOG("Error");
                 //if (c) c->getDelegate()->onError(c, s_data);
                 if (c) c->fireEvent("error", s_data);
                 break;
             case 8:
-                CCLOG("Noop\n");
+                CCLOG("Noop");
                 break;
             }
         }
@@ -943,6 +1020,14 @@ void SIOClientImpl::onMessage(WebSocket* ws, const WebSocket::Data& data)
 void SIOClientImpl::onClose(WebSocket* ws)
 {
     CC_UNUSED_PARAM(ws);
+
+    for(std::list<SIOClientImpl*>::iterator iter = SocketIO::getInstance()->_allSockets.begin(); iter != SocketIO::getInstance()->_allSockets.end(); ++iter) {
+        if(*iter == this) {
+            SocketIO::getInstance()->_allSockets.erase(iter);
+            break;
+        }
+    }
+
     if (!_clients.empty())
     {
         for (std::map<std::string, SIOClient*>::iterator iter = _clients.begin(); iter != _clients.end(); ++iter)
@@ -950,6 +1035,8 @@ void SIOClientImpl::onClose(WebSocket* ws)
             iter->second->socketClosed();
         }
     }
+
+    closeHeartBeatThread();
 
     this->release();
 }
@@ -986,11 +1073,13 @@ void SIOClient::onOpen()
     {
         _socket->connectToEndpoint(_path);
     }
+
 }
 
 void SIOClient::onConnect()
 {
     _connected = true;
+    _delegate->onConnect(this);
 }
 
 void SIOClient::send(const std::string& s)
@@ -1142,6 +1231,8 @@ SIOClient* SocketIO::connect(const std::string& uri, SocketIO::SIODelegate& dele
         socket->addClient(path, c);
 
         socket->connect();
+
+        SocketIO::getInstance()->_allSockets.push_back(socket);
     }
     else
     {
@@ -1170,6 +1261,7 @@ SIOClient* SocketIO::connect(const std::string& uri, SocketIO::SIODelegate& dele
     	    newSocket->addClient(path, newC);
 
     	    newSocket->connect();
+            SocketIO::getInstance()->_allSockets.push_back(newSocket);
 
     	    return newC;
     	}
@@ -1200,15 +1292,10 @@ void SocketIO::removeSocket(const std::string& uri)
 	}
 }
 
-void SocketIO::addUnhandleSocket(SIOClientImpl* soc) {
-	_unhandle_sockets.push_back(soc);
-}
-
 void SocketIO::dispatchMessage() {
 
-    for(std::map<std::string, SIOClientImpl*>::iterator iter = _sockets.begin();iter != _sockets.end();++iter) {
-		CCLOG("We dispatch message:%s", iter->first);
-        iter->second->_ws->processMessage();
-        iter->second->schedule();
+    for(std::list<SIOClientImpl*>::iterator iter = _allSockets.begin();iter != _allSockets.end();++iter) {
+        if((*iter)->_ws != NULL)
+            (*iter)->_ws->processMessage();
     }
 }

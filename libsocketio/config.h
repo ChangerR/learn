@@ -24,6 +24,12 @@
 			} \
 		} while(0)
 
+#define CC_UNUSED_PARAM(v) (void)(v)
+#define CCLOG(fmt,...) do { \
+							printf(fmt, ##__VA_ARGS__); \
+							printf("\n"); \
+						}while (0)
+
 #ifdef _WIN32
 typedef CRITICAL_SECTION cc_mutex_t;
 typedef HANDLE cc_pthread_t;
