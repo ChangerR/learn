@@ -64,8 +64,13 @@ public:
     RovControl();
     virtual ~RovControl();
 
-    void onClose(SIOClient* client);
-
-    virtual void onError(SIOClient* client, const std::string& data);
+    virtual void onClose(SIOClient* client);
+	
+	virtual void onError(SIOClient* client, const std::string& data);
+	
+	
+private:
+	float power;
+	
 };
 #endif

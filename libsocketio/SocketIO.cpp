@@ -317,6 +317,10 @@ private:
 
     cc_pthread_t _heartbeatThread;
     bool _heartbeatRunning;
+#ifdef _WIN32
+	long _lastHeartBeatTime;
+#endif
+
 #ifdef __linux__
     cc_mutex_t _heartbeatThreadMutex;
     pthread_cond_t _heartbeatThreadIntCond;
@@ -652,8 +656,20 @@ void SIOClientImpl::disconnectFromEndpoint(const std::string& endpoint)
 }
 
 #ifdef _WIN32
-DWORD WINAPI SIOClientImpl::hbThreadEntryFunc(LPVOID) {
-
+DWORD WINAPI SIOClientImpl::hbThreadEntryFunc(LPVOID data) {
+	SIOClientImpl* pointer = (SIOClientImpl*)data;
+	pointer->_lastHeartBeatTime = GetTickCount();
+	long nowt;
+	while (pointer->_heartbeatRunning) {
+		nowt = GetTickCount();
+		if (pointer->_lastHeartBeatTime + pointer->_heartbeat < nowt)
+		{
+			pointer->heartbeat(nowt - pointer->_lastHeartBeatTime);
+			pointer->_lastHeartBeatTime = nowt;
+		}
+		Sleep(1);
+	}
+	return 0;
 }
 #elif defined(__linux__)
 void* SIOClientImpl::hbThreadEntryFunc(void* data) {

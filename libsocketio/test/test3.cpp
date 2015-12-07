@@ -46,7 +46,7 @@ int main() {
     }
 #endif
 
-    SIOClient* client = SocketIO::connect("changer.site:8080",_del);
+    SIOClient* client = SocketIO::connect("localhost:80",_del);
 
     if(client != NULL) {
         SIOEvent e;
