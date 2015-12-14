@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">ABRConsole</string>
+    <string name="btn_connect">连接</string>
+    <string name="contact_us">联系我们</string>
+    <string name="about_us">关于此软件</string>
+    <string name="camera_ip_hint">视频IP地址</string>
+    <string name="console_ip_hint">控制台IP地址</string>
+    <string name="contact_us_msg">少年请不要妄想联系我们,哈哈哈哈</string>
+    <string name="btn_ok">确定</string>
+    <string name="btn_cancel">取消</string>
+    <string name="copyright">copyright © 浙江安博瑞创新科技有限公司 </string>
 </resources>

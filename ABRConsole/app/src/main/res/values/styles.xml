@@ -7,4 +7,14 @@
         <item name="android:colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="AppThemeFull" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:screenOrientation">landscape</item>
+    </style>
+
+    <style name="AppCompatAlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorAccent">#FFCC00</item>
+        <item name="android:textColorPrimary">#FFCCC0</item>
+        <item name="android:background">#5fa3d0</item>
+    </style>
 </resources>

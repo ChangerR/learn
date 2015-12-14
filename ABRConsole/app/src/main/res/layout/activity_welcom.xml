@@ -13,7 +13,6 @@
     tools:context="com.abrinnovation.abrconsole.WelcomActivity"
     >
 
-
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -37,9 +36,10 @@
             android:layout_height="wrap_content"
             android:textColor="@color/colorEditText"
             android:id="@+id/camera_ip"
-            android:hint="Camera IP Address"
+            android:hint="@string/camera_ip_hint"
             android:drawableLeft="@drawable/webcam"
-            android:textAlignment="center"/>
+            android:drawablePadding="16dp"
+            android:textAlignment="gravity"/>
 
         <EditText
             android:layout_width="match_parent"
@@ -47,9 +47,10 @@
             android:layout_marginTop="16dp"
             android:textColor="@color/colorEditText"
             android:id="@+id/control_ip"
-            android:hint="Control IP Address"
+            android:hint="@string/console_ip_hint"
             android:drawableLeft="@drawable/console"
-            android:textAlignment="center"/>
+            android:drawablePadding="16dp"
+            android:textAlignment="gravity"/>
     </LinearLayout>
 
 
@@ -59,9 +60,10 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/edit_area"
         android:layout_marginTop="32dp"
-        android:text="Connect"
+        android:text="@string/btn_connect"
         android:background="@drawable/rouderect_btn"
         android:id="@+id/connect_btn"
+        android:onClick="onConnectClick"
         />
 
     <TextView
@@ -69,9 +71,10 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/connect_btn"
         android:layout_marginTop="32dp"
-        android:text="联系我们"
+        android:text="@string/contact_us"
         android:textColor="#0000ff"
         android:clickable="true"
+        android:onClick="onContactUsClick"
         />
 
     <TextView
@@ -80,9 +83,10 @@
         android:layout_below="@id/connect_btn"
         android:layout_marginTop="32dp"
         android:layout_alignRight="@id/connect_btn"
-        android:text="关于此软件"
+        android:text="@string/about_us"
         android:textColor="#0000ff"
         android:clickable="true"
+        android:onClick="onAboutUsClick"
         />
 
 </RelativeLayout>
