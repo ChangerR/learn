@@ -6,4 +6,18 @@
     android:background="@drawable/login_background"
     tools:context="com.abrinnovation.abrconsole.ShowActivity">
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_connect"
+        android:background="@drawable/rouderect_btn"
+        android:id="@+id/connect_btn2"
+        />
+
+    <com.abrinnovation.abrconsole.JoystickView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/connect_btn2"
+        android:layout_alignParentLeft="true" />
+
 </RelativeLayout>
