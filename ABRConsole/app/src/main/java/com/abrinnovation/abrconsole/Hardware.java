@@ -1,6 +1,8 @@
 package com.abrinnovation.abrconsole;
 
+import android.util.Log;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
@@ -48,8 +50,13 @@ public class Hardware extends Thread {
         return ret;
     }
 
+    public boolean getRunningState() {
+        return _running;
+    }
+
     public void close() {
-        _running = true;
+
+        _running = false;
         try {
             join();
         } catch (InterruptedException e) {
@@ -67,6 +74,14 @@ public class Hardware extends Thread {
         }
     }
 
+    public String getStatus(String s) {
+        String ret = null;
+        synchronized (_status) {
+            ret = (String)_status.get(s);
+        }
+        return ret;
+    }
+
     public void run() {
 
         while(_running) {
@@ -76,15 +91,38 @@ public class Hardware extends Thread {
                     String[] statuses = line.split(";");
                     for(String str : statuses) {
                         String[] s = str.split(":");
-                        _status.put(s[0],s[1]);
+                        synchronized (_status) {
+                            _status.put(s[0], s[1]);
+                        }
                     }
                 }
             }catch(Exception e) {
                 e.printStackTrace();
+                _running = false;
             }
 
+            for(Object bytes:_sendList) {
+                byte[] _send = (byte[])bytes;
+                try {
+                    _outStream.write(_send);
+                }catch (IOException e) {
+                    Log.i("ABRConsole", "Input Stream Error");
+                    _running = false;
+                    break;
+                }
+            }
         }
 
+        try {
+            _reader.close();
+            _outStream.close();
+            _client.close();
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+        _status.clear();
+        _sendList.clear();
+        _client = null;
     }
 
     public static byte CRC8(String t) {

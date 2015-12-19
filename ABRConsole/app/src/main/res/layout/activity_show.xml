@@ -6,10 +6,23 @@
     android:background="@drawable/login_background"
     tools:context="com.abrinnovation.abrconsole.ShowActivity">
 
+    <!---
     <com.abrinnovation.abrconsole.JoystickView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true" />
+    -->
+    <ToggleButton
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:textOff="@null"
+        android:textOn="@null"
+        android:background="@drawable/toggle_state"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:id="@+id/Setting_btn"
+        />
+
 
 </RelativeLayout>
