@@ -6,16 +6,17 @@
     android:background="@drawable/login_background"
     tools:context="com.abrinnovation.abrconsole.ShowActivity">
 
-    <!---
+
     <com.abrinnovation.abrconsole.JoystickView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true" />
-    -->
+        android:layout_alignParentLeft="true"
+        android:id="@+id/JoyStick"/>
+
     <ToggleButton
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:textOff="@null"
         android:textOn="@null"
         android:background="@drawable/toggle_state"

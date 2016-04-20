@@ -12,7 +12,6 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import java.util.jar.Attributes;
 
 /**
  * Created by Changer on 2015/12/14.
@@ -24,6 +23,7 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
     private int reid = -1,rex,rey,rexl,reyl;
     private Paint paint = null;
     private Context _context = null;
+    private IJoyStickCallback  _callback = null;
 
     public JoystickView(Context context,AttributeSet attrs) {
         super(context, attrs);
@@ -42,6 +42,9 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
         setZOrderOnTop(true);
     }
 
+    void setOnJoystickCallback(IJoyStickCallback callback) {
+        _callback = callback;
+    }
     /**
      * 处理触屏事件
      */
@@ -136,10 +139,10 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
         float distance = (float)Math.sqrt(Math.pow(x - centerx, 2) + Math.pow(y - centery,2));
         float rx = x;
         float ry = y;
-        paint.setARGB(155,255,0,0);
+        paint.setARGB(155, 255, 0, 0);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(ringWidth);
-        c.drawCircle(centerx,centery,innerRadius,paint);
+        c.drawCircle(centerx, centery, innerRadius, paint);
 
         if(distance > midRadius) {
             rx = ((rx - centerx) / distance) * midRadius + centerx;
@@ -148,6 +151,10 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
 
         paint.setStyle(Paint.Style.FILL);
         c.drawCircle(rx,ry,dip2px(_context,20),paint);
+
+        if(_callback != null) {
+            _callback.onJoyStickLCallback(distance / midRadius,vectorToAngle(rx - centerx,ry - centery));
+        }
     }
 
     private void drawJoystickR(int centerx,int centery,int x,int y, Canvas c) {
@@ -167,6 +174,10 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
 
         paint.setStyle(Paint.Style.FILL);
         c.drawCircle(centerx, radiusY,dip2px(_context,20),paint);
+
+        if(_callback != null) {
+            _callback.onJoyStickRCallback((int)((radiusY - centery) / lineRange * 100));
+        }
     }
 
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
@@ -192,5 +203,35 @@ public class JoystickView extends SurfaceView implements SurfaceHolder.Callback 
     public static int dip2px(Context context, float dpValue) {
         final float scale = context.getResources().getDisplayMetrics().density;
         return (int) (dpValue * scale + 0.5f);
+    }
+
+    public static int vectorToAngle(float dx,float dy) {
+        int ret = 0;
+
+        if(dx == 0) {
+            if(dy == 0) {
+                return 0;
+            }else if(dy > 0) {
+                return 90;
+            } else {
+                return 270;
+            }
+        }
+
+        ret = (int)Math.atan(Math.abs(dy) / Math.abs(dx));
+
+        if(dx > 0) {
+            if(dy  < 0) {
+               ret = 360 -ret;
+            }
+        } else {
+            if(dy >= 0) {
+                ret = 180 - ret;
+            }else {
+                ret = 180 + ret;
+            }
+        }
+
+        return ret;
     }
 }

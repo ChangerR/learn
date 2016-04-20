@@ -16,7 +16,7 @@ public class WelcomActivity extends AppCompatActivity {
     }
 
     public void onConnectClick(View view) {
-        Log.i("ABRConsole","connect");
+        Log.i("ABRConsole", "connect");
         Intent intent = new Intent(this,ShowActivity.class);
         startActivity(intent);
     }
@@ -27,7 +27,7 @@ public class WelcomActivity extends AppCompatActivity {
 
         builder.setTitle(R.string.contact_us);
         builder.setMessage(R.string.contact_us_msg);
-        builder.setPositiveButton(R.string.btn_ok,null);
+        builder.setPositiveButton(R.string.btn_ok, null);
         builder.show();
     }
 
@@ -39,5 +39,11 @@ public class WelcomActivity extends AppCompatActivity {
         builder.setMessage(R.string.copyright);
         builder.setPositiveButton(R.string.btn_ok,null);
         builder.show();
+    }
+
+    public void onTestClick(View view) {
+        Log.i("ABRConsole","test button");
+        Intent intent = new Intent(this,TestActivity.class);
+        startActivity(intent);
     }
 }

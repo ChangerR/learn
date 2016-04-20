@@ -66,6 +66,7 @@
         android:onClick="onConnectClick"
         />
 
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -87,6 +88,18 @@
         android:textColor="#0000ff"
         android:clickable="true"
         android:onClick="onAboutUsClick"
+        android:id="@+id/about_us_id"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/about_us_id"
+        android:layout_marginTop="32dp"
+        android:text="@string/btn_test"
+        android:background="@drawable/rouderect_btn"
+        android:id="@+id/test_btn_id"
+        android:onClick="onTestClick"
         />
 
 </RelativeLayout>
